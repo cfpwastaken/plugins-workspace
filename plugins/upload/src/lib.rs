@@ -113,15 +113,20 @@ async fn download(
         let mut stream = response.bytes_stream();
 
         let mut stats = TransferStats::default();
+        let mut throttle = 0;
         while let Some(chunk) = stream.try_next().await? {
             file.write_all(&chunk).await?;
             stats.record_chunk_transfer(chunk.len());
-            let _ = on_progress.send(ProgressPayload {
-                progress: chunk.len() as u64,
-                progress_total: stats.total_transferred,
-                total,
-                transfer_speed: stats.transfer_speed,
-            });
+            throttle += 1;
+            if (throttle == 100) {
+                let _ = on_progress.send(ProgressPayload {
+                    progress: chunk.len() as u64,
+                    progress_total: stats.total_transferred,
+                    total,
+                    transfer_speed: stats.transfer_speed,
+                });
+                throttle = 0;
+            }
         }
         file.flush().await?;
         Ok(())
