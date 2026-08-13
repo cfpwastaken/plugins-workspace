@@ -108,7 +108,8 @@ async fn download(
         }
         let total = response.content_length().unwrap_or(0);
 
-        let mut file = BufWriter::new(File::create(&file_path).await?);
+        let file = File::create(&file_path).await?;
+        let mut file = BufWriter::with_capacity(4 * 1024 * 1024, file);
         let mut stream = response.bytes_stream();
 
         let mut stats = TransferStats::default();
